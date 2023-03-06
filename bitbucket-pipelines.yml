@@ -1,0 +1,48 @@
+image: node:16
+
+pipelines:
+  default:
+    - step: &build-step
+        name: "Test & build"
+        caches:
+          - node
+        script:
+          - npm install
+          - npm test
+        artifacts:
+          - ./**
+  branches:
+    develop :
+      - step: *build-step
+    release/*:
+      - step: *build-step
+      - step: &extract-env
+          name: "Set env"
+          script:
+            - >
+              PACKAGE_VERSION=$(cat package.json | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | sed -e 's/^[[:space:]]*//')
+            - echo "export PACKAGE_VERSION=${PACKAGE_VERSION}" >> set_env.sh
+          artifacts:
+            - ./**
+            - set_env.sh
+      - step:
+          name: "Sync Repo"
+          trigger: manual
+          script:
+            - source set_env.sh
+            - pipe: docker://bluealba/sync-repo-pipe:latest
+              variables:
+                PACKAGE_VERSION: '${PACKAGE_VERSION}'
+                DEST_REPO: 'pablote/varde-one-demoapp2'
+                DEST_GITHUB_USER: "pablote"
+                DEST_GITHUB_TOKEN: "${GITHUB_TOKEN}"
+                PRODUCT_DISPLAY_NAME: 'VärdeOne Core'
+                COMPONENT_DISPLAY_NAME: 'varde-one-demoapp2'
+                REVIEWERS: "pablote"
+                DEST_DEFAULT_BRANCH: "main"
+    master:
+      - step: *build-step
+      - step: *extract-env
+
+options:
+  max-time: 10
