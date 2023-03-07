@@ -1,1 +1,1 @@
-export PACKAGE_VERSION=1.2.0
+export PACKAGE_VERSION=1.3.1
